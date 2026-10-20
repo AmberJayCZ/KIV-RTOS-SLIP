@@ -1,5 +1,18 @@
 # Notes
 
+## New files
+
+- `sources`
+  - `kernel`
+    - `include`
+      - `drivers`
+        - `bridges`
+          - `inet_defs.h` - Definitions of fundamental structs and enums
+
+## Modified files
+
+- none so far
+
 ## Concept
 
 ```cpp
@@ -20,13 +33,9 @@ typedef uint32_t IPv4_Addr;
 
 typedef uint16_t In_Port;
 
-template struct IP_Header<Internet_Protocol>; // Is this even possible???
+template struct IP_Header<Internet_Protocol>;
 
-template struct TP_Header<Internet_Protocol, Transport_Protocol>;
-
-struct IP4_Header;
-
-struct UDP4_Header;
+template struct TP_Header<Transport_Protocol>;
 
 namespace SLIP {
 	// Create socket with specified IP and TP versions
@@ -34,7 +43,6 @@ namespace SLIP {
 
 	// Binding local address
 	int In_Socket<Internet_Protocol, Transport_Protocol>::bind(addr_t<Internet_Protocol>& addr);
-	// NOTE: It would be preferable if addr_t was implicitely tied to IP version - so eventually binding an IPv6 addr to IPv4 socket is caught even in IDE
 
 	// Binding endpoint address
 	int In_Socket<Internet_Protocol, Transport_Protocol>::connect(addr_t<Internet_Protocol>& addr);
