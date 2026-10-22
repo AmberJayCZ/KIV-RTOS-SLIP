@@ -8,10 +8,18 @@
       - `drivers`
         - `bridges`
           - `inet_defs.h` - Definitions of fundamental structs and enums
+				- `inet.h` - Definition of `CINet` class and helper methods
+		- `src`
+			- `drivers`
+				- `inet.cpp` - Implementation of `inet.h`
 
 ## Modified files
 
-- none so far
+- `sources`
+	- `kernel`
+		- `include`
+			- `fs`
+				- `filesystem.h` - Added `NFile_Type_Major::Network_Socket` file type
 
 ## Concept
 
