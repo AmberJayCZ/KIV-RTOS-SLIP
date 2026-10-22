@@ -22,6 +22,7 @@ enum class NFile_Type_Major {
     Condition_Var   = 4, // podminkova promenna
     Pipe            = 5, // roura
     Broadcast       = 6, // broadcast channel
+    Network_Socket  = 7, // sitovy socket
 };
 
 enum class NFile_Open_Mode {
