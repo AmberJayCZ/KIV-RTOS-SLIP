@@ -113,8 +113,3 @@ struct TTP_Header<NTransport_Protocol::UDP> {
 
 /* UDP header type alias */
 using TUDP_Header = TTP_Header<NTransport_Protocol::UDP>;
-
-
-
-TIPv4_Header head;
-head.Checksum; // error: this declaration has no storage class or type specifier
