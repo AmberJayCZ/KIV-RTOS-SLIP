@@ -4,7 +4,7 @@
 #include <drivers/uart.h>
 #include <fs/filesystem.h>
 
-constexpr auto INET_SOCKET_BUFFER_SIZE = 2048; /* 2kB buffer for each socket (4kB - input and output buffers) */
+constexpr auto INET_SOCKET_BUFFER_SIZE = 2048; /* Size of socket buffers in bytes (separate input and output buffers) */
 constexpr auto PORT_RANGE = 0xFFFF; /* Maximum of ports */
 
 enum class NINet_Socket_Flags : uint16_t {
