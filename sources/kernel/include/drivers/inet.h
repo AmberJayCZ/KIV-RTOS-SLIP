@@ -35,10 +35,9 @@ class TINet_Socket : public IFile {
 	// TODO
 
 	private:
-		TNetwork_Port loc_port, end_port;
 		NInternet_Protocol ip;
 		NTransport_Protocol tp;
-		// TIP_Address<ip> loc_addr, end_addr; // Problem with templates? - maybe use struct* and reinterpret cast
+		TIP_Address_Container local_addr, remote_addr; // Container for arbitrary raw data, used with reinterpret_cast and instance data to ascertain actual address type
 		char in_buff[INET_SOCKET_BUFFER_SIZE];
 		char out_buff[INET_SOCKET_BUFFER_SIZE];
 		uint8_t flags;
