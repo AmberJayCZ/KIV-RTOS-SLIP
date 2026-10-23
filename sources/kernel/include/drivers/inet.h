@@ -7,9 +7,25 @@
 constexpr auto INET_SOCKET_BUFFER_SIZE = 2048; /* 2kB buffer for each socket (4kB - input and output buffers) */
 constexpr auto PORT_RANGE = 0xFFFF; /* Maximum of ports */
 
+enum class NINet_Socket_Flags : uint16_t {
+	CLOSED 		= 1,
+	BOUND 		= 2,
+	IN_FULL 	= 4,
+	OUT_FULL 	= 8,
+};
+
 /* Network socket class */
 class TINet_Socket : public IFile {
 	// TODO
+
+	private:
+		TNetwork_Port loc_port, end_port;
+		NInternet_Protocol ip;
+		NTransport_Protocol tp;
+		// TIP_Address<ip> loc_addr, end_addr; // Problem with templates? - maybe use struct* and reinterpret cast
+		char in_buff[INET_SOCKET_BUFFER_SIZE];
+		char out_buff[INET_SOCKET_BUFFER_SIZE];
+		uint16_t flags;
 };
 
 class CINet {
