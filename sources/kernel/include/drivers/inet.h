@@ -102,12 +102,18 @@ class CINet : public IFilesystem_Driver {
 		IFile* Open_File(const char* path, NFile_Open_Mode mode) override;
 };
 
-TNetwork_Port Host_To_Network(TNetwork_Port port);
+TNetwork_Port Host_To_Network(const TNetwork_Port port);
 
-TNetwork_Port Network_To_Host(TNetwork_Port port);
-
-template <NInternet_Protocol IP>
-TIP_Address<IP> Host_To_Network(TIP_Address<IP>);
+TNetwork_Port Network_To_Host(const TNetwork_Port port);
 
 template <NInternet_Protocol IP>
-TIP_Address<IP> Network_To_Host(TIP_Address<IP>);
+TIP_Address<IP> Host_To_Network(const TIP_Address<IP>);
+
+template <NInternet_Protocol IP>
+TIP_Address<IP> Network_To_Host(const TIP_Address<IP>);
+
+template <NInternet_Protocol IP>
+TIP_Address<IP> Address_To_Number(const char* str); // Would return IPv4_Address_None on conversion failure - maybe use pointers for conversion so that a potentially valid output value is not used to indicate an error?
+
+template <NInternet_Protocol IP>
+char* Number_To_Address(const TIP_Address<IP>);
