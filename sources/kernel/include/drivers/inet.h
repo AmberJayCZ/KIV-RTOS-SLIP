@@ -87,7 +87,7 @@ class TINet_Socket : public IFile {
 		bool Wait_Dequeue_Process(uint32_t pid) override;
 };
 
-class CINet {
+class CINet : public IFilesystem_Driver {
 	private:
 		CUART& uart;
 		TINet_Socket* bindings[PORT_RANGE] { nullptr }; /* Mapping of socket bindings - only simple array as just UDP is supported so we do not need to implement a multikey map yet - ports in network format are used as indices */
@@ -97,6 +97,10 @@ class CINet {
 		CINet(CUART& uart);
 
 		// TINet_Socket* Get_Socket(const TNetwork_Port port, const NTransport_Protocol protocol); // Returns pointer to socket (can be null if there is no socket with these identifiers), port is in host format
+
+		void On_Register() override;
+
+		IFile* Open_File(const char* path, NFile_Open_Mode mode) override;
 };
 
 TNetwork_Port Host_To_Network(TNetwork_Port port);
