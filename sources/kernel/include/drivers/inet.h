@@ -49,17 +49,17 @@ class TINet_Socket : public IFile {
 
 		uint8_t Configure(const NInternet_Protocol ip, const NTransport_Protocol tp);
 
-		uint8_t Bind(TIP_Address_Container& local);
+		uint8_t Bind(TIP_Address_Container* local);
 
-		uint8_t Connect(TIP_Address_Container& remote);
+		uint8_t Connect(TIP_Address_Container* remote);
 
 		uint32_t Send(const char* buff, const uint32_t num);
 
-		uint32_t Send_To(const char* buff, const uint32_t num, TIP_Address_Container& addr);
+		uint32_t Send_To(const char* buff, const uint32_t num, TIP_Address_Container* addr);
 
 		uint32_t Recv(char* buff, const uint32_t num);
 
-		uint32_t Recv_From(char *buff, const uint32_t num, TIP_Address_Container& addr);
+		uint32_t Recv_From(char* buff, const uint32_t num, TIP_Address_Container* addr);
 
 
 
@@ -95,7 +95,7 @@ class CINet : public IFilesystem_Driver {
 	public:
 		CINet(CUART& uart);
 
-		// TINet_Socket* Get_Socket(const TNetwork_Port port, const NTransport_Protocol protocol); // Returns pointer to socket (can be null if there is no socket with these identifiers), port is in host format
+		TINet_Socket* Get_Socket(const TNetwork_Port port, const NTransport_Protocol protocol);
 
 		void On_Register() override;
 
