@@ -117,3 +117,15 @@ TIP_Address<IP> Address_To_Number(const char* str); // Would return IPv4_Address
 
 template <NInternet_Protocol IP>
 char* Number_To_Address(const TIP_Address<IP>);
+
+bool Compare_Addresses(const TIP_Address_Container& a, const TIP_Address_Container& b, const NInternet_Protocol protocol) {
+	switch (protocol) {
+		case NInternet_Protocol::V4:
+			auto ar = reinterpret_cast<const TIPv4_Address>(a.raw_addr);
+			auto br = reinterpret_cast<const TIPv4_Address>(b.raw_addr);
+			return a.port == b.port && ar == br;
+	
+		default:
+			return false;
+	}
+}
