@@ -23,6 +23,14 @@
 
 ## Concept
 
+INet driver - manages filesystem sockets
+UART SLIP driver - handles instantiation of sockets that communicate via SLIP over UART
+	- Socket - has only input buffer, which SLIP driver writes into
+	- Driver - has output formatting buffer (socket send() -> output buffer -> SILP format and send) and input reassemble buffer (SLIP recieve -> unformat -> parse headers -> socket recieve buffer)
+		- Also has a mutex for writing to output buffer by sockets
+		- Output buffer is output to UART after each Send() call
+		- Input buffer moves message to target socket buffer after reassemble
+
 ```cpp
 // NOTE: This is a different approach from standard UNIX-like sockets and file descriptors - needs to be discussed,
 // will be perhaps reworked to function more like BSD sockets and use the VFS API in stdlib/stdfile
