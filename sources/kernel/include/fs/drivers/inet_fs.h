@@ -3,9 +3,8 @@
 #include <fs/filesystem.h>
 #include <circbuffer.h>
 
-constexpr auto INET_SOCKET_BUFFER_SIZE = 2048; /* Size of socket buffers in bytes (separate input and output buffers) */
 constexpr uint32_t INET_SOCKET_ERROR = 0xFFFFFFFF; /* IFile calls on a TINet_Socket that return this value were erroneous */
-constexpr uint32_t SLIP_MAX_BOUND_SOCKETS = 10;
+constexpr uint32_t INET_MAX_REGISTERED_SOCKETS = 10;
 
 /* Network socket status flags */
 enum class NINet_Socket_Flags : uint8_t {
@@ -36,8 +35,6 @@ class CINet_Socket : public IFile {
 		NTransport_Protocol tp;
 		NFile_Open_Mode mode;
 		TIP_Address_Container local_addr, remote_addr; // Container for arbitrary raw data, used with reinterpret_cast and instance data to ascertain actual address type
-		char in_buff[INET_SOCKET_BUFFER_SIZE];
-		char out_buff[INET_SOCKET_BUFFER_SIZE];
 		uint8_t flags;
 		NINet_Socket_Errors error;
 
@@ -72,23 +69,53 @@ class CINet_Socket : public IFile {
 			return Compare_Addresses(local_addr, addr, ip) && tp == protocol;
 		}
 
-		virtual uint32_t Send(const char* buff, const uint32_t num);
+		virtual uint32_t Send(const char* buff, const uint32_t num) {
+			if (mode == NFile_Open_Mode::Read_Only)
+				return INET_SOCKET_ERROR;
 
-		virtual uint32_t Send_To(const char* buff, const uint32_t num, TIP_Address_Container* addr);
+			if (!(flags & static_cast<uint8_t>(NINet_Socket_Flags::CONNECTED)))
+				return INET_SOCKET_ERROR;
 
-		virtual uint32_t Recv(char* buff, const uint32_t num);
+			return 0;
+		}
 
-		virtual uint32_t Recv_From(char* buff, const uint32_t num, TIP_Address_Container* addr);
+		virtual uint32_t Send_To(const char* buff, const uint32_t num, TIP_Address_Container* addr) {
+			if (mode == NFile_Open_Mode::Read_Only)
+				return INET_SOCKET_ERROR;
+
+			return 0;
+		}
+
+		virtual uint32_t Recv(char* buff, const uint32_t num) {
+			if (mode == NFile_Open_Mode::Write_Only)
+				return INET_SOCKET_ERROR;
+
+			if (!(flags & static_cast<uint8_t>(NINet_Socket_Flags::CONNECTED)))
+				return INET_SOCKET_ERROR;
+
+			return 0;
+		}
+
+		virtual uint32_t Recv_From(char* buff, const uint32_t num, TIP_Address_Container* addr) {
+			if (mode == NFile_Open_Mode::Write_Only)
+				return INET_SOCKET_ERROR;
+
+			return 0;
+		}
 
 		uint8_t Flags() { return flags; }
 
 		// IFile implementation - all methods for future reference
 
-		virtual uint32_t Read(char* buffer, uint32_t num);
+		virtual uint32_t Read(char* buffer, uint32_t num) override { return Recv(buffer, num); }
 
-		virtual uint32_t Write(const char* buffer, uint32_t num);
+		virtual uint32_t Write(const char* buffer, uint32_t num) override { return Send(buffer, num); }
 
-		virtual bool Close();
+		virtual bool Close() override {
+			flags |= static_cast<uint8_t>(NINet_Socket_Flags::CLOSED);
+			socket_provider.Unregister_Socket(this);
+			return true;
+		}
 
 		virtual bool IOCtl(NIOCtl_Operation dir, void* ctlptr);
 
@@ -116,38 +143,38 @@ class CINet_Driver : public IFilesystem_Driver {
 
 class CINet_Socket_Provider {
 	private:
-		CINet_Socket* bound[SLIP_MAX_BOUND_SOCKETS];
-		uint32_t count;
+		CINet_Socket* bound[INET_MAX_REGISTERED_SOCKETS];
+		uint32_t sock_count;
 
 	public:
 		CINet_Socket_Provider() {
-			for (auto sock : bound) {
+			for (auto& sock : bound) {
 				sock = nullptr;
 			}
 
-			count = 0;
+			sock_count = 0;
 		}
 
 		bool Register_Socket(CINet_Socket* socket) {
-			if (count == SLIP_MAX_BOUND_SOCKETS)
+			if (sock_count == INET_MAX_REGISTERED_SOCKETS)
 				return false;
 
-			for (auto sock : bound) {
+			for (auto& sock : bound) {
 				if (!sock) {
 					sock = socket;
 					break;
 				}
 			}
 
-			count++;
+			sock_count++;
 			return true;
 		}
 
 		bool Unregister_Socket(CINet_Socket* socket_addr) {
-			for (auto sock : bound) {
+			for (auto& sock : bound) {
 				if (sock == socket_addr) {
 					sock = nullptr;
-					count--;
+					sock_count--;
 					return true;
 				}
 			}
