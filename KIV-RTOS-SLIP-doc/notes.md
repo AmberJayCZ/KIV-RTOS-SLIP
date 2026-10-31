@@ -30,7 +30,14 @@ UART SLIP driver - handles instantiation of sockets that communicate via SLIP ov
 		- Also has a mutex for writing to output buffer by sockets
 		- Output buffer is output to UART after each Send() call
 		- Input buffer moves message to target socket buffer after reassemble
+	- Socket - AUX output buffer for transforming message to SLIP format
+	- Driver - AUX input buffer for 
 
+Control flow:
+Driver continuously polls UART and output queue
+- Reads UART data and extracts SLIP tags -> processed message is stored into buffer (at least header and partial data) -> bytes in buffer are interpreted and sent to target socket (even if only partial data then we still know how much more data is waiting)
+- Output queue contains formatted messages -> dump to UART for sending
+Sockets send on demand when send method is called - use aux buffer to format message and write formatted to driver buffer
 ```cpp
 // NOTE: This is a different approach from standard UNIX-like sockets and file descriptors - needs to be discussed,
 // will be perhaps reworked to function more like BSD sockets and use the VFS API in stdlib/stdfile

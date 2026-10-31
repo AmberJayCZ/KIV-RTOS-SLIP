@@ -76,16 +76,89 @@ class CSLIP_Socket : public CINet_Socket {
 /* SLIP driver class */
 class CSLIP_Driver : public CINet_Driver {
 	private:
-		char inbound[DRIVER_BUFFER_SIZE];
-		char outbound[DRIVER_BUFFER_SIZE];
+		CUART& uart;
+		NonBlocking_Circular_Buffer_Queue<char, SLIP_DRIVER_OUTPUT_BUFF_SIZE> send_buff;
+		char recv_transform_buff[SLIP_TRANSFORM_BUFF_SIZE];
+		mutex_t send_buff_mtx;
 		CSLIP_Socket* bound[SLIP_MAX_BOUND_SOCKETS];
+		uint32_t sock_count;
 
 	public:
-		CSLIP_Driver();
+		CSLIP_Driver(CUART& uart) : uart(uart) {
+			send_buff_mtx = mutex_create("slip_mtx");
 
-		CSLIP_Socket* Get_Socket(const TIP_Address_Container& address, const NTransport_Protocol protocol);
+			for (auto& sock : bound) {
+				sock = nullptr;
+			}
+		}
 
-		void On_Register() override;
+		~CSLIP_Driver() {
+			mutex_destroy(send_buff_mtx);
+		}
 
-		IFile* Open_File(const char* path, NFile_Open_Mode mode) override;
+		bool Register_Socket(CSLIP_Socket* socket) {
+			if (sock_count == SLIP_MAX_BOUND_SOCKETS)
+				return false;
+
+			for (auto& sock : bound) {
+				if (!sock) {
+					sock = socket;
+					break;
+				}
+			}
+
+			sock_count++;
+			return true;
+		}
+
+		bool Unregister_Socket(CSLIP_Socket* socket_addr) {
+			for (auto& sock : bound) {
+				if (sock == socket_addr) {
+					sock = nullptr;
+					sock_count--;
+					return true;
+				}
+			}
+
+			return false;
+		}
+
+		CSLIP_Socket* Get_Socket(const TIP_Address_Container& address, const NTransport_Protocol protocol) {
+			for (auto& sock : bound) {
+				if (sock && sock->Compare_Local_Bind(address, protocol))
+					return sock;
+			}
+
+			return nullptr;
+		}
+
+		void Send_Message(const char* msg, const uint32_t size) {
+			while (!mutex_lock(send_buff_mtx)) {
+				; /* Active wait until mutex acquired */
+			}
+
+			uint32_t sent = 0;
+
+			while (sent != size) {
+				sent += send_buff.Multi_Put(&msg[sent], size - sent); /* Write whole message into buffer */
+			}
+
+			mutex_unlock(send_buff_mtx); /* Release mutex once data is copied into buffer */
+		}
+
+		void Run_Driver() {
+			
+		}
+
+		// IFS_Driver interface methods
+
+		void On_Register() override {
+
+		}
+
+		IFile* Open_File(const char* path, NFile_Open_Mode mode) override {
+
+		}
 };
+
+extern CSLIP_Driver slip_driver;
