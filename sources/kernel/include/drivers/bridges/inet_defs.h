@@ -38,7 +38,7 @@ enum class NTransport_Protocol : uint8_t {
 
 
 
-/* Defines size (in bytes) of TIP_Address_Container typecasting struct */
+/* Defines size (in bytes) of raw_addr typecasting field in TIP_Address_Container struct */
 constexpr int MAX_ADDR_LEN = 16;
 
 /* Struct for typecasting IP addresses - TODO test usage */
