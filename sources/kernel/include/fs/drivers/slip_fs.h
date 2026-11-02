@@ -207,7 +207,30 @@ uint32_t SLIP_Encode(const char* data, const uint32_t data_len, char* buffer, co
 	return written;
 }
 
-/* Decodes at most buffer_len characters from data into buffer, sets message_end if END tag was found. Returns number of characters written into buffer. Parameter end_position contains the position in data_stream where decoding was stopped. If end_tag is set, then data[end_position] is END tag, meaning that a new message starts there. */
+// TODO - testing
+/* Decodes at most max(data_len - 1, buffer_len) characters from data into buffer, returns number of decoded characters in buffer. Parameter end_position is index in data stream where decoding was stopped and end_tag is set if data[end_position] is END. If end_position < data_len or !end_tag then message was not decoded entirely, buffer needs to be flushed and decoding continued from end_position. Note that end_position and end_tag are reset upon calling to 0 and false respectively. */
 uint32_t SLIP_Decode(const char* data, const uint32_t data_len, char* buffer, const uint32_t buffer_len, uint32_t& end_position, bool& end_tag) {
-	/* TODO */
+	uint32_t decoded = 0;
+
+	for (end_position = 0, end_tag = false; end_position < data_len - 1 && decoded < buffer_len && data[end_position] != END; end_position++) {
+		if (data[end_position] == ESC && data[end_position + 1] == ESC_END) {
+			buffer[decoded++] = END;
+			end_position++; /* Increment end_position by 2 because 2 chars were processed */
+		}
+
+		else if (data[end_position] == ESC && data[end_position + 1] == ESC_ESC) {
+			buffer[decoded++] = ESC;
+			end_position++; /* Increment end_position by 2 because 2 chars were processed */
+		}
+
+		else {
+			buffer[decoded++] = data[end_position];
+		}
+	}
+
+	if (end_position < data_len && data[end_position] == END) {
+		end_tag = true; /* END tag detected */
+	}
+
+	return decoded;
 }
