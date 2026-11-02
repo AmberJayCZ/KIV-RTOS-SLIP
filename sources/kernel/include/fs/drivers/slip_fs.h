@@ -161,47 +161,47 @@ class CSLIP_Driver : public CINet_Driver {
 		}
 
 		void Run_Driver() {
-			
+			/* TODO */
 		}
 
 		// IFS_Driver interface methods
 
 		void On_Register() override {
-
+			/* TODO - if used */
 		}
 
 		IFile* Open_File(const char* path, NFile_Open_Mode mode) override {
-
+			/* TODO */
 		}
 };
 
 extern CSLIP_Driver slip_driver;
 
 
-
-/* Encodes at most buffer_len - 1 characters into buffer in accordance with SLIP encoding. Returns number of written bytes */
-uint32_t SLIP_Encode(const char* data, const uint32_t data_len, char* buffer, const uint32_t buffer_len, const bool insert_start_tag) {
+// TODO - testing
+/* Encodes at most max(data_len, buffer_len - 1) characters into buffer in accordance with SLIP encoding. Returns number of written bytes. Parameter end_position is index in data stream where encoding was stopped and end_tag is true if END was appended to message. If end_position < data_len or !end_tag then buffer needs to be flushed and encoding continued from end_position. Note that end_position and end_tag are reset upon calling to 0 and false respectively. */
+uint32_t SLIP_Encode(const char* data, const uint32_t data_len, char* buffer, const uint32_t buffer_len, uint32_t& end_position, bool& end_tag) {
 	uint32_t written = 0;
 
-	if (insert_start_tag) {
-		buffer[written] = END;
-		written++;
-	}
-
-	for (uint32_t pos = 0; pos < data_len && written < buffer_len - 1; pos++) {
-		if (data[pos] == END) {
+	for (end_position = 0, end_tag = false; end_position < data_len && written < buffer_len - 1; end_position++) {
+		if (data[end_position] == END) {
 			buffer[written++] = ESC;
 			buffer[written++] = ESC_END; /* writing is limited to buffer_len - 1 because of these doubled tags */
 		}
 
-		else if (data[pos] == ESC) {
+		else if (data[end_position] == ESC) {
 			buffer[written++] = ESC;
 			buffer[written++] = ESC_ESC;
 		}
 
 		else {
-			buffer[written++] = data[pos];
+			buffer[written++] = data[end_position];
 		}
+	}
+
+	if (end_position == data_len && written < buffer_len) {
+		buffer[written++] = END; /* Write END tag only if there is space left */
+		end_tag = true;
 	}
 
 	return written;
