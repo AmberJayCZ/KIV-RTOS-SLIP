@@ -8,36 +8,38 @@
       - `drivers`
         - `bridges`
           - `inet_defs.h` - Definitions of fundamental structs and enums
-				- `inet.h` - Definition of `CINet` class and helper methods
-		- `src`
-			- `drivers`
-				- `inet.cpp` - Implementation of `inet.h`
+        - `inet.h` - Helper conversion functions
+      - `fs`
+        - `drivers`
+          - `inet_fs.h` - Defines generic network socket and driver interface + socket provider class where drivers register their sockets
+          - `slip_fs.h` - Provides SLIP socket and driver implementation
+    - `src`
 
 ## Modified files
 
 - `sources`
-	- `kernel`
-		- `include`
-			- `fs`
-				- `filesystem.h` - Added `NFile_Type_Major::Network_Socket` file type
+  - `kernel`
+    - `include`
+      - `fs`
+        - `filesystem.h` - Added `NFile_Type_Major::Network_Socket` file type
 
-## Concept
+## Concept (outdated)
 
 INet driver - manages filesystem sockets
 UART SLIP driver - handles instantiation of sockets that communicate via SLIP over UART
-	- Socket - has only input buffer, which SLIP driver writes into
-	- Driver - has output formatting buffer (socket send() -> output buffer -> SILP format and send) and input reassemble buffer (SLIP recieve -> unformat -> parse headers -> socket recieve buffer)
-		- Also has a mutex for writing to output buffer by sockets
-		- Output buffer is output to UART after each Send() call
-		- Input buffer moves message to target socket buffer after reassemble
-	- Socket - AUX output buffer for transforming message to SLIP format
-	- Driver - AUX input buffer for 
+- Socket - has only input buffer, which SLIP driver writes into
+- Driver - has output formatting buffer (socket send() -> output buffer -> SILP format and send) and input reassemble buffer (SLIP recieve -> unformat -> parse headers -> socket recieve buffer)
+  - Also has a mutex for writing to output buffer by sockets
+  - Output buffer is output to UART after each Send() call
+  - Input buffer moves message to target socket buffer after reassemble
+- Socket - AUX output buffer for transforming message to SLIP format
 
 Control flow:
 Driver continuously polls UART and output queue
 - Reads UART data and extracts SLIP tags -> processed message is stored into buffer (at least header and partial data) -> bytes in buffer are interpreted and sent to target socket (even if only partial data then we still know how much more data is waiting)
 - Output queue contains formatted messages -> dump to UART for sending
 Sockets send on demand when send method is called - use aux buffer to format message and write formatted to driver buffer
+
 ```cpp
 // NOTE: This is a different approach from standard UNIX-like sockets and file descriptors - needs to be discussed,
 // will be perhaps reworked to function more like BSD sockets and use the VFS API in stdlib/stdfile
