@@ -56,7 +56,10 @@ class CSLIP_Socket : public CINet_Socket {
 
 		uint32_t Write(const char* buffer, uint32_t num) override;
 
-		bool Close() override;
+		bool Close() override {
+			CINet_Socket::Close();
+			return slip_driver.Unregister_Socket(this);
+		}
 
 		bool IOCtl(NIOCtl_Operation dir, void* ctlptr) override;
 
