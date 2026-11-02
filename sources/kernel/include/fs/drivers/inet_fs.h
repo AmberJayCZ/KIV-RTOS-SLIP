@@ -1,7 +1,7 @@
 #include <drivers/bridges/inet_defs.h>
 #include <drivers/inet.h>
 #include <fs/filesystem.h>
-#include <circbuffer.h>
+#include <stdmutex.h>
 
 constexpr uint32_t INET_SOCKET_ERROR = 0xFFFFFFFF; /* IFile calls on a TINet_Socket that return this value were erroneous */
 constexpr uint32_t INET_MAX_REGISTERED_SOCKETS = 10;
@@ -13,8 +13,8 @@ enum class NINet_Socket_Flags : uint8_t {
 	BOUND 		= 4,	/* Socket is bound to local interface */
 	CONNECTED	= 8,	/* Socket is connected to remote host */
 
-	IN_FULL 	= 32,	/* Input buffer is full */
-	OUT_FULL 	= 64,	/* Output buffer is full */
+	IN_FULL 	= 32,	/* Input buffer is full - TODO review if needed */
+	OUT_FULL 	= 64,	/* Output buffer is full - TODO review if needed */
 	ERROR		= 128,	/* Last operation caused an error */
 };
 
@@ -24,8 +24,8 @@ enum class NINet_Socket_Errors : uint32_t {
 	CONFIGURE_FAIL,		/* Configuration of socket failed */
 	BIND_FAIL,			/* Binding to local interface failed */
 	CONNECT_FAIL,		/* Connecting to remote endpoint failed */
-	SEND_BUFF_OVERFLOW,	/* No write was performed - not enough space in outbound buffer */
-	RECV_BUFF_OVERFLOW,	/* Inbound buffer overflowed */
+	SEND_BUFF_OVERFLOW,	/* No write was performed - not enough space in outbound buffer - TODO review if needed */
+	RECV_BUFF_OVERFLOW,	/* Inbound buffer overflowed - TODO review if needed */
 };
 
 /* Network socket class */
@@ -65,10 +65,6 @@ class CINet_Socket : public IFile {
 			return NINet_Socket_Errors::OK;
 		}
 
-		bool Compare_Local_Bind(const TIP_Address_Container& addr, const NTransport_Protocol protocol) {
-			return Compare_Addresses(local_addr, addr, ip) && tp == protocol;
-		}
-
 		virtual uint32_t Send(const char* buff, const uint32_t num) {
 			if (mode == NFile_Open_Mode::Read_Only)
 				return INET_SOCKET_ERROR;
@@ -103,9 +99,13 @@ class CINet_Socket : public IFile {
 			return 0;
 		}
 
-		uint8_t Flags() { return flags; }
+		uint8_t Flags() const { return flags; }
 
-		// IFile implementation - all methods for future reference
+		bool Compare_Local_Bind(const TIP_Address_Container& addr, const NTransport_Protocol protocol) const {
+			return Compare_Addresses(local_addr, addr, ip) && tp == protocol;
+		}
+
+		// IFile implementation - all methods for future reference - TODO review which to implement / override
 
 		virtual uint32_t Read(char* buffer, uint32_t num) override { return Recv(buffer, num); }
 
@@ -145,6 +145,7 @@ class CINet_Socket_Provider {
 	private:
 		CINet_Socket* bound[INET_MAX_REGISTERED_SOCKETS];
 		uint32_t sock_count;
+		mutex_t provider_mtx;
 
 	public:
 		CINet_Socket_Provider() {
@@ -152,12 +153,21 @@ class CINet_Socket_Provider {
 				sock = nullptr;
 			}
 
+			provider_mtx = mutex_create("socket_mtx");
 			sock_count = 0;
+		}
+
+		~CINet_Socket_Provider() {
+			mutex_destroy(provider_mtx);
 		}
 
 		bool Register_Socket(CINet_Socket* socket) {
 			if (sock_count == INET_MAX_REGISTERED_SOCKETS)
 				return false;
+
+			while (!mutex_lock(provider_mtx)) {
+				; /* Active wait until mutex acquired */
+			}
 
 			for (auto& sock : bound) {
 				if (!sock) {
@@ -167,10 +177,15 @@ class CINet_Socket_Provider {
 			}
 
 			sock_count++;
+			mutex_unlock(provider_mtx);
 			return true;
 		}
 
-		bool Unregister_Socket(CINet_Socket* socket_addr) {
+		bool Unregister_Socket(CINet_Socket* socket_addr) {			
+			while (!mutex_lock(provider_mtx)) {
+				; /* Active wait until mutex acquired */
+			}
+			
 			for (auto& sock : bound) {
 				if (sock == socket_addr) {
 					sock = nullptr;
@@ -179,6 +194,7 @@ class CINet_Socket_Provider {
 				}
 			}
 
+			mutex_unlock(provider_mtx);
 			return false;
 		}
 
