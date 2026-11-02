@@ -90,7 +90,7 @@ struct TIP_Header<NInternet_Protocol::V4> {
 	uint8_t ECN : 2;					/* ECN flags (2b - NIP_ECN) */
 	uint16_t Length;					/* Header + data length in bytes (16b) */
 	uint16_t FragmentID;				/* Packet fragment group identification (16b) */
-	uint8_t Flags : 3;					/* Special IP flags (3b - NIP_Flags) */
+	uint16_t Flags : 3;					/* Special IP flags (3b - NIP_Flags) */
 	uint16_t FragmentOffset : 13;		/* Position of fragment within packet measured in 8-byte units (16b) */
 	uint8_t TTL;						/* Time-to-live counter (8b) */
 	uint8_t DataProtocol;				/* Protocol for encapsulated data (8b - NTransport_Protocol) */
@@ -104,6 +104,8 @@ struct TIP_Header<NInternet_Protocol::V4> {
 
 /* IPv4 header type alias */
 using TIPv4_Header = TIP_Header<NInternet_Protocol::V4>;
+
+constexpr uint8_t Default_TTL = 0x40;
 
 
 
