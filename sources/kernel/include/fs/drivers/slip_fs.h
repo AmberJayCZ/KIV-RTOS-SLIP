@@ -79,13 +79,13 @@ class CSLIP_Driver : public CINet_Driver {
 		CUART& uart;
 		NonBlocking_Circular_Buffer_Queue<char, SLIP_DRIVER_OUTPUT_BUFF_SIZE> send_buff;
 		char recv_transform_buff[SLIP_TRANSFORM_BUFF_SIZE];
-		mutex_t send_buff_mtx;
+		mutex_t driver_mtx;
 		CSLIP_Socket* bound[SLIP_MAX_BOUND_SOCKETS];
 		uint32_t sock_count;
 
 	public:
 		CSLIP_Driver(CUART& uart) : uart(uart) {
-			send_buff_mtx = mutex_create("slip_mtx");
+			driver_mtx = mutex_create("slip_mtx");
 
 			for (auto& sock : bound) {
 				sock = nullptr;
@@ -93,12 +93,16 @@ class CSLIP_Driver : public CINet_Driver {
 		}
 
 		~CSLIP_Driver() {
-			mutex_destroy(send_buff_mtx);
+			mutex_destroy(driver_mtx);
 		}
 
 		bool Register_Socket(CSLIP_Socket* socket) {
-			if (sock_count == SLIP_MAX_BOUND_SOCKETS)
+			if (sock_count == SLIP_MAX_BOUND_SOCKETS) /* Socket field is full */
 				return false;
+
+			while (!mutex_lock(driver_mtx)) {
+				; /* Active wait until mutex acquired */
+			}
 
 			for (auto& sock : bound) {
 				if (!sock) {
@@ -108,18 +112,25 @@ class CSLIP_Driver : public CINet_Driver {
 			}
 
 			sock_count++;
+			mutex_unlock(driver_mtx);
 			return true;
 		}
 
 		bool Unregister_Socket(CSLIP_Socket* socket_addr) {
+			while (!mutex_lock(driver_mtx)) {
+				; /* Active wait until mutex acquired */
+			}
+
 			for (auto& sock : bound) {
 				if (sock == socket_addr) {
 					sock = nullptr;
 					sock_count--;
+					mutex_unlock(driver_mtx);
 					return true;
 				}
 			}
 
+			mutex_unlock(driver_mtx);
 			return false;
 		}
 
@@ -133,7 +144,7 @@ class CSLIP_Driver : public CINet_Driver {
 		}
 
 		void Send_Message(const char* msg, const uint32_t size) {
-			while (!mutex_lock(send_buff_mtx)) {
+			while (!mutex_lock(driver_mtx)) {
 				; /* Active wait until mutex acquired */
 			}
 
@@ -143,7 +154,7 @@ class CSLIP_Driver : public CINet_Driver {
 				sent += send_buff.Multi_Put(&msg[sent], size - sent); /* Write whole message into buffer */
 			}
 
-			mutex_unlock(send_buff_mtx); /* Release mutex once data is copied into buffer */
+			mutex_unlock(driver_mtx); /* Release mutex once data is copied into buffer */
 		}
 
 		void Run_Driver() {
@@ -162,3 +173,38 @@ class CSLIP_Driver : public CINet_Driver {
 };
 
 extern CSLIP_Driver slip_driver;
+
+
+
+/* Encodes at most buffer_len - 1 characters into buffer in accordance with SLIP encoding. Returns number of written bytes */
+uint32_t SLIP_Encode(const char* data, const uint32_t data_len, char* buffer, const uint32_t buffer_len, const bool insert_start_tag) {
+	uint32_t written = 0;
+
+	if (insert_start_tag) {
+		buffer[written] = END;
+		written++;
+	}
+
+	for (uint32_t pos = 0; pos < data_len && written < buffer_len - 1; pos++) {
+		if (data[pos] == END) {
+			buffer[written++] = ESC;
+			buffer[written++] = ESC_END; /* writing is limited to buffer_len - 1 because of these doubled tags */
+		}
+
+		else if (data[pos] == ESC) {
+			buffer[written++] = ESC;
+			buffer[written++] = ESC_ESC;
+		}
+
+		else {
+			buffer[written++] = data[pos];
+		}
+	}
+
+	return written;
+}
+
+/* Decodes at most buffer_len characters from data into buffer, sets message_end if END tag was found. Returns number of characters written into buffer. Parameter end_position contains the position in data_stream where decoding was stopped. If end_tag is set, then data[end_position] is END tag, meaning that a new message starts there. */
+uint32_t SLIP_Decode(const char* data, const uint32_t data_len, char* buffer, const uint32_t buffer_len, uint32_t& end_position, bool& end_tag) {
+	/* TODO */
+}
