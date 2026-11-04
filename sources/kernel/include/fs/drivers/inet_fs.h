@@ -6,6 +6,18 @@
 constexpr uint32_t INET_SOCKET_ERROR = 0xFFFFFFFF; /* IFile calls on a TINet_Socket that return this value were erroneous */
 constexpr uint32_t INET_MAX_REGISTERED_SOCKETS = 10;
 
+constexpr char* INET_IP4 = "4";
+constexpr char* INET_UDP = "UDP";
+
+struct INet_TP_Container {
+	const char* name;
+	NTransport_Protocol proto;
+};
+
+const INet_TP_Container transport_protos[] = {
+	{ INET_UDP, NTransport_Protocol::UDP }
+};
+
 /* Network socket status flags */
 enum class NINet_Socket_Flags : uint8_t {
 	CLOSED 		= 1,	/* Socket is closed */
@@ -132,13 +144,6 @@ class CINet_Socket : public IFile {
 		virtual bool Wait_Dequeue_Process(uint32_t pid);
 };
 
-class CINet_Driver : public IFilesystem_Driver {
-	public:
-		virtual void On_Register();
-
-		virtual IFile* Open_File(const char* path, NFile_Open_Mode mode);
-};
-
 
 
 class CINet_Socket_Provider {
@@ -198,7 +203,7 @@ class CINet_Socket_Provider {
 			return false;
 		}
 
-		bool Contains(const CINet_Socket* socket) {
+		bool Contains(const CINet_Socket* socket) const {
 			if (!socket)
 				return false;
 
@@ -210,7 +215,7 @@ class CINet_Socket_Provider {
 			return false;
 		}
 
-		CINet_Socket* Get_Socket(const TIP_Address_Container& address, const NTransport_Protocol protocol) {
+		CINet_Socket* Get_Socket(const TIP_Address_Container& address, const NTransport_Protocol protocol) const {
 			for (auto sock : bound) {
 				if (sock && sock->Compare_Local_Bind(address, protocol))
 					return sock;
