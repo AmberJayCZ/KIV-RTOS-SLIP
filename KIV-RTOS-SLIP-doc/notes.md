@@ -23,6 +23,17 @@
       - `fs`
         - `filesystem.h` - Added `NFile_Type_Major::Network_Socket` file type
 
+## Filesystem path parsing
+
+SLIP driver will support socket creation via a specified filesystem path.
+Root node is `DEV:slip`. Opening file here creates an uninitialized socket. Additional parameters can be specified using 'directories' (separated by forward slash `/`).
+The proposed structure is:
+
+- `DEV:slip` - root node
+  - `<IP>-<TP>` - numeric IP version (`4` for IPv4) and text TP identifier (`UDP`)
+    - `<local IP address>-<local port>` - IP address in text notation and port in numeric notation (host format)
+      - `<remote IP address>-<remote port>`
+
 ## Concept (outdated)
 
 INet driver - manages filesystem sockets
