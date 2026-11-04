@@ -77,7 +77,7 @@ class CSLIP_Socket : public CINet_Socket {
 };
 
 /* SLIP driver class */
-class CSLIP_Driver : public CINet_Driver {
+class CSLIP_Driver : public IFilesystem_Driver {
 	private:
 		CUART& uart;
 		NonBlocking_Circular_Buffer_Queue<char, SLIP_DRIVER_OUTPUT_BUFF_SIZE> send_buff;
@@ -137,7 +137,7 @@ class CSLIP_Driver : public CINet_Driver {
 			return false;
 		}
 
-		CSLIP_Socket* Get_Socket(const TIP_Address_Container& address, const NTransport_Protocol protocol) {
+		CSLIP_Socket* Get_Socket(const TIP_Address_Container& address, const NTransport_Protocol protocol) const {
 			for (auto& sock : bound) {
 				if (sock && sock->Compare_Local_Bind(address, protocol))
 					return sock;
