@@ -25,6 +25,18 @@ TIP_Address<IP> Address_To_Number(const char* str); // Would return IPv4_Address
 template <NInternet_Protocol IP>
 char* Number_To_Address(const TIP_Address<IP>);
 
+/* Selects address parsing function based on IP version */
+bool Parse_Addr_String(const char* str, const NInternet_Protocol ip, TIP_Address_Container& addr) {
+	switch (ip) {
+		case NInternet_Protocol::V4:
+			auto a = reinterpret_cast<TIPv4_Address>(addr.raw_addr);
+			a = Address_To_Number<NInternet_Protocol::V4>(str);
+			return true;
+	
+		default:
+			return false;
+	}
+}
 
 /* Provides zeroed TIP_Address_Container struct */
 TIP_Address_Container Get_Addr_Container() {
