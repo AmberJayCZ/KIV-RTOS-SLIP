@@ -41,12 +41,6 @@ enum class NTransport_Protocol : uint8_t {
 /* Defines size (in bytes) of raw_addr typecasting field in TIP_Address_Container struct */
 constexpr int MAX_ADDR_LEN = 16;
 
-/* Struct for typecasting IP addresses - TODO test usage */
-struct TIP_Address_Container {
-	TNetwork_Port port; /* Target port (network format) */
-	uint8_t raw_addr[MAX_ADDR_LEN]; /* Raw address in bytes (network format) - use reinterpret_cast to concrete TIP_Address */
-};
-
 /* Generic IP address type */
 template <NInternet_Protocol IP>
 struct TIP_Address_Type;
@@ -130,3 +124,9 @@ struct TTP_Header<NTransport_Protocol::UDP> {
 
 /* UDP header type alias */
 using TUDP_Header = TTP_Header<NTransport_Protocol::UDP>;
+
+/* Struct for typecasting IP addresses - TODO test usage */
+struct TIP_Address_Container {
+	TNetwork_Port port; /* Target port (network format) */
+	uint8_t raw_addr[MAX_ADDR_LEN]; /* Raw address in bytes (network format) - use reinterpret_cast to concrete TIP_Address */
+};
