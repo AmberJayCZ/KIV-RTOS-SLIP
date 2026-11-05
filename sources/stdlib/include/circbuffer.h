@@ -50,7 +50,7 @@ class Blocking_Circular_Buffer_Queue {
 		}
 
 		/* Puts count items into queue in largest possible chunks, blocks if full */
-		void Multi_Put(const Type* items, uint32_t count) {
+		void Multi_Put(const Type* items, const uint32_t count) {
 			uint32_t put = 0;
 
 			if (Space() >= count) {
@@ -60,7 +60,7 @@ class Blocking_Circular_Buffer_Queue {
 				}
 
 				full = front == rear;
-				return;
+				return put;
 			}
 
 			while (put < count) {
@@ -77,10 +77,12 @@ class Blocking_Circular_Buffer_Queue {
 
 				full = front == rear;
 			}
+
+			return put;
 		}
 
 		/* Removes items from queue in largest possible chunks, blocks if empty */
-		void Multi_Remove(Type* buff, uint32_t count) {
+		void Multi_Remove(Type* buff, const uint32_t count) {
 			uint32_t removed = 0;
 
 			if (Count() >= count) {
@@ -90,7 +92,7 @@ class Blocking_Circular_Buffer_Queue {
 				}
 
 				full = front != rear;
-				return;
+				return removed;
 			}
 
 			while (removed < count) {
@@ -107,6 +109,8 @@ class Blocking_Circular_Buffer_Queue {
 
 				full = front != rear;
 			}
+
+			return removed;
 		}
 };
 
@@ -121,12 +125,12 @@ class NonBlocking_Circular_Buffer_Queue {
 		bool full;
 
 	public:
-		Blocking_Circular_Buffer_Queue() {
+		NonBlocking_Circular_Buffer_Queue() {
 			front = rear = 0;
 			full = false;
 		}
 
-		~Blocking_Circular_Buffer_Queue() = default;
+		~NonBlocking_Circular_Buffer_Queue() = default;
 
 		bool Empty() const { return front == rear && !full; }
 
@@ -162,7 +166,7 @@ class NonBlocking_Circular_Buffer_Queue {
 		}
 
 		/* Puts count items into queue, returns number of items inserted */
-		uint32_t Multi_Put(const Type* items, uint32_t count) {
+		uint32_t Multi_Put(const Type* items, const uint32_t count) {
 			uint32_t put = 0;
 
 			if (Space() >= count) {
@@ -172,7 +176,7 @@ class NonBlocking_Circular_Buffer_Queue {
 				}
 
 				full = front == rear;
-				return;
+				return put;
 			}
 
 			while (put < count) {
@@ -188,10 +192,12 @@ class NonBlocking_Circular_Buffer_Queue {
 
 				full = front == rear;
 			}
+
+			return put;
 		}
 
 		/* Removes items from queue, returns number of items removed */
-		uint32_t Multi_Remove(Type* buff, uint32_t count) {
+		uint32_t Multi_Remove(Type* buff, const uint32_t count) {
 			uint32_t removed = 0;
 
 			if (Count() >= count) {
@@ -201,7 +207,7 @@ class NonBlocking_Circular_Buffer_Queue {
 				}
 
 				full = front != rear;
-				return;
+				return removed;
 			}
 
 			while (removed < count) {
@@ -217,5 +223,7 @@ class NonBlocking_Circular_Buffer_Queue {
 
 				full = front != rear;
 			}
+
+			return removed;
 		}
 };
