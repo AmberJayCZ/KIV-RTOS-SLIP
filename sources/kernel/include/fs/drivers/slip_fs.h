@@ -25,7 +25,7 @@ class CSLIP_Socket : public CINet_Socket {
 		~CSLIP_Socket() override;
 
 		NINet_Socket_Errors Bind(const TIP_Address_Container& local) override {
-			if (slip_driver.Get_Socket(local, tp))
+			if (slip_driver.Get_Socket(local, ip, tp))
 				return NINet_Socket_Errors::BIND_FAIL;
 
 			if (CINet_Socket::Bind(local) != NINet_Socket_Errors::OK)
@@ -82,6 +82,8 @@ class CSLIP_Driver : public IFilesystem_Driver {
 		CUART& uart;
 		NonBlocking_Circular_Buffer_Queue<char, SLIP_DRIVER_OUTPUT_BUFF_SIZE> send_buff;
 		char recv_transform_buff[SLIP_TRANSFORM_BUFF_SIZE];
+		uint32_t partial_recv_idx;
+		TIP_Address_Container partial_recv_addr;
 		mutex_t driver_mtx;
 		CSLIP_Socket* bound[SLIP_MAX_BOUND_SOCKETS];
 		uint32_t sock_count;
@@ -137,9 +139,9 @@ class CSLIP_Driver : public IFilesystem_Driver {
 			return false;
 		}
 
-		CSLIP_Socket* Get_Socket(const TIP_Address_Container& address, const NTransport_Protocol protocol) const {
+		CSLIP_Socket* Get_Socket(const TIP_Address_Container& address, const NInternet_Protocol ipv, const NTransport_Protocol tpv) const {
 			for (auto& sock : bound) {
-				if (sock && sock->Compare_Local_Bind(address, protocol))
+				if (sock && sock->Compare_Local_Bind(address, ipv, tpv))
 					return sock;
 			}
 
