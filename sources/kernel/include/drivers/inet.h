@@ -3,58 +3,23 @@
 #include <drivers/bridges/inet_defs.h>
 #include <stdstring.h>
 
-/* TODO */
-TNetwork_Port Host_To_Network(const TNetwork_Port port);
-
-/* TODO */
-TNetwork_Port Network_To_Host(const TNetwork_Port port);
-
-/* TODO */
-template <NInternet_Protocol IP>
-TIP_Address<IP> Host_To_Network(const TIP_Address<IP>);
-
-/* TODO */
-template <NInternet_Protocol IP>
-TIP_Address<IP> Network_To_Host(const TIP_Address<IP>);
-
-/* TODO */
-template <NInternet_Protocol IP>
-TIP_Address<IP> Address_To_Number(const char* str); // Would return IPv4_Address_None on conversion failure - maybe use pointers for conversion so that a potentially valid output value is not used to indicate an error?
-
-/* TODO */
-template <NInternet_Protocol IP>
-char* Number_To_Address(const TIP_Address<IP>);
-
-/* Selects address parsing function based on IP version */
-bool Parse_Addr_String(const char* str, const NInternet_Protocol ip, TIP_Address_Container& addr) {
-	switch (ip) {
-		case NInternet_Protocol::V4:
-			auto a = reinterpret_cast<TIPv4_Address>(addr.raw_addr);
-			a = Address_To_Number<NInternet_Protocol::V4>(str);
-			return true;
-	
-		default:
-			return false;
-	}
+uint16_t _rbo16(const uint16_t val) {
+	return (((val << 8) & 0xFF00) | ((val >> 8) & 0xFF00));
 }
 
-/* Provides zeroed TIP_Address_Container struct */
-TIP_Address_Container Get_Addr_Container() {
-	TIP_Address_Container c;
-	c.port = 0;
-	memset(c.raw_addr, 0, MAX_ADDR_LEN);
-	return c;
-}
-
-bool Compare_Addresses(const TIP_Address_Container& a, const TIP_Address_Container& b, const NInternet_Protocol protocol) {
-	switch (protocol) {
-		case NInternet_Protocol::V4:
-			auto ar = reinterpret_cast<const TIPv4_Address>(a.raw_addr);
-			auto br = reinterpret_cast<const TIPv4_Address>(b.raw_addr);
-			return a.port == b.port && ar == br;
-	
-		default:
-			return false;
+void _rbo_buffer(uint8_t* data, const uint32_t size) {
+	if (!data || size < 2) return;
+    
+    uint32_t left = 0;
+    uint32_t right = size - 1;
+    
+    while (left < right) {
+        uint8_t temp = data[left];
+        data[left] = data[right];
+        data[right] = temp;
+        
+        left++;
+        right--;
 	}
 }
 
@@ -85,6 +50,137 @@ inline uint32_t Get_THL(const NTransport_Protocol protocol) {
 		
 		default:
 			return 0;
+	}
+}
+
+TNetwork_Port Host_To_Network(const TNetwork_Port port) {
+	return _rbo16(port);
+}
+
+TNetwork_Port Network_To_Host(const TNetwork_Port port) {
+	return _rbo16(port);
+}
+
+template <NInternet_Protocol IP>
+TIP_Address<IP> Host_To_Network(TIP_Address<IP>& ip) {
+	_rbo_buffer(reinterpret_cast<uint8_t*>(ip), Get_IP_Address_Length(IP));
+	return ip;
+}
+
+template <NInternet_Protocol IP>
+TIP_Address<IP> Network_To_Host(TIP_Address<IP>& ip) {
+	_rbo_buffer(reinterpret_cast<uint8_t*>(ip), Get_IP_Address_Length(IP));
+	return ip;
+}
+
+template <NInternet_Protocol IP>
+TIP_Address<IP> Address_To_Number(const char* str); // Would return IPv4_Address_None on conversion failure - maybe use pointers for conversion so that a potentially valid output value is not used to indicate an error?
+
+template <>
+TIP_Address<NInternet_Protocol::V4> Address_To_Number<NInternet_Protocol::V4>(const char* str) {
+	if (!str)
+		return IPv4_Address_None;
+
+	unsigned char octets[4];
+    int octet_index = 0;
+    int current_val = -1;
+    int digit_count = 0;
+	TIPv4_Address a = IPv4_Address_None;
+
+    while (*str != '\0') {
+        char c = *str;
+
+        if (c >= '0' && c <= '9') {
+            // Disallow leading zeros for individual octets (e.g., "192.168.01.1" is invalid)
+            if (digit_count == 1 && current_val == 0) {
+                return IPv4_Address_None;
+            }
+
+            if (current_val == -1) {
+                current_val = 0;
+            }
+
+            current_val = current_val * 10 + (c - '0');
+            
+            // Octet value must be between 0 and 255
+            if (current_val > 255) {
+                return IPv4_Address_None;
+            }
+
+            digit_count++;
+            // Maximum 3 digits per octet
+            if (digit_count > 3) {
+                return IPv4_Address_None;
+            }
+        } 
+        else if (c == '.') {
+            // Must have at least one digit before a dot, and cannot exceed 3 dots
+            if (digit_count == 0 || octet_index >= 3) {
+                return IPv4_Address_None;
+            }
+
+            octets[octet_index++] = static_cast<unsigned char>(current_val);
+            current_val = -1;
+            digit_count = 0;
+        } 
+        else {
+            // Any character other than digits or dots is invalid
+            return IPv4_Address_None;
+        }
+        str++;
+    }
+
+    // Must have exactly 4 octets (3 dots) and the final octet must terminate with digits
+    if (octet_index != 3 || digit_count == 0) {
+        return IPv4_Address_None;
+    }
+
+    octets[octet_index] = static_cast<unsigned char>(current_val);
+	auto ap = reinterpret_cast<unsigned char*>(&a);
+
+	for (auto i = 0; i < 3; i++) {
+		ap[i] = octets[i];
+	}
+
+	return a;
+}
+
+/* TODO */
+template <NInternet_Protocol IP>
+char* Number_To_Address(const TIP_Address<IP>);
+
+/* Selects address parsing function based on IP version */
+bool Parse_Addr_String(const char* str, const NInternet_Protocol ip, TIP_Address_Container& addr) {
+	switch (ip) {
+		case NInternet_Protocol::V4: {
+			auto a = reinterpret_cast<TIPv4_Address*>(&addr.raw_addr);
+			*a = Address_To_Number<NInternet_Protocol::V4>(str);
+			return true;
+		}
+	
+		default:
+			return false;
+	}
+}
+
+/* Provides zeroed TIP_Address_Container struct */
+TIP_Address_Container Get_Addr_Container() {
+	TIP_Address_Container c;
+	c.port = 0;
+	memset(c.raw_addr, 0, MAX_ADDR_LEN);
+	return c;
+}
+
+bool Compare_Addresses(const TIP_Address_Container& a, const TIP_Address_Container& b, const NInternet_Protocol protocol) {
+	switch (protocol) {
+		case NInternet_Protocol::V4: {
+			auto ar = reinterpret_cast<const TIPv4_Address*>(&a.raw_addr);
+			auto br = reinterpret_cast<const TIPv4_Address*>(&b.raw_addr);
+			return a.port == b.port && *ar == *br;
+		}
+	
+		default:
+			return false;
 	}
 }
 
