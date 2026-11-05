@@ -6,8 +6,8 @@
 constexpr uint32_t INET_SOCKET_ERROR = 0xFFFFFFFF; /* IFile calls on a TINet_Socket that return this value were erroneous */
 constexpr uint32_t INET_MAX_REGISTERED_SOCKETS = 10;
 
-constexpr char* INET_IP4 = "4";
-constexpr char* INET_UDP = "UDP";
+constexpr const char* INET_IP4 = "4";
+constexpr const char* INET_UDP = "UDP";
 
 struct INet_TP_Container {
 	const char* name;
@@ -63,7 +63,7 @@ class CINet_Socket : public IFile {
 		}
 
 		virtual NINet_Socket_Errors Bind(const TIP_Address_Container& local) {
-			if (socket_provider.Get_Socket(local, tp))
+			if (socket_provider.Get_Socket(local, ip, tp))
 				return NINet_Socket_Errors::BIND_FAIL;
 
 			local_addr = local;
@@ -113,8 +113,8 @@ class CINet_Socket : public IFile {
 
 		uint8_t Flags() const { return flags; }
 
-		bool Compare_Local_Bind(const TIP_Address_Container& addr, const NTransport_Protocol protocol) const {
-			return Compare_Addresses(local_addr, addr, ip) && tp == protocol;
+		bool Compare_Local_Bind(const TIP_Address_Container& addr, const NInternet_Protocol ipv, const NTransport_Protocol tpv) const {
+			return Compare_Addresses(local_addr, addr, ip) && ip == ipv && tp == tpv;
 		}
 
 		// IFile implementation - all methods for future reference - TODO review which to implement / override
@@ -215,9 +215,9 @@ class CINet_Socket_Provider {
 			return false;
 		}
 
-		CINet_Socket* Get_Socket(const TIP_Address_Container& address, const NTransport_Protocol protocol) const {
+		CINet_Socket* Get_Socket(const TIP_Address_Container& address, const NInternet_Protocol ip, const NTransport_Protocol tp) const {
 			for (auto sock : bound) {
-				if (sock && sock->Compare_Local_Bind(address, protocol))
+				if (sock && sock->Compare_Local_Bind(address, ip, tp))
 					return sock;
 			}
 
