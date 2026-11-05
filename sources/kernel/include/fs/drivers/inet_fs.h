@@ -226,3 +226,93 @@ class CINet_Socket_Provider {
 };
 
 extern CINet_Socket_Provider socket_provider;
+
+
+bool Parse_IP(const char* str, uint32_t& end, NInternet_Protocol& ip) {
+	constexpr int TMPS = 3;
+	char tmp[TMPS];
+	int eix = 0;
+	end = 0;
+
+	for ( ; str[end] != '/' && str[end] != '\0'; end++) {
+		;
+	}
+
+	eix = static_cast<int>(end > TMPS) ? TMPS : end;
+	strncpy(tmp, str, eix);
+	tmp[eix - 1] = '\0';
+
+	if (str[end] == '\0')
+		end = 0;
+
+	ip = static_cast<NInternet_Protocol>(atoi(tmp));
+	return true;
+}
+
+bool Parse_TP(const char* str, uint32_t& end, NTransport_Protocol& tp) {
+	constexpr int TMPS = 5;
+	char tmp[TMPS];
+	int eix = 0;
+	end = 0;
+
+	for ( ; str[end] != '/' && str[end] != '\0'; end++) {
+		;
+	}
+
+	eix = static_cast<int>(end > TMPS) ? TMPS : end;
+	strncpy(tmp, str, eix);
+	tmp[eix - 1] = '\0';
+
+	if (str[end] == '\0')
+		end = 0;
+
+	for (const auto& tpc : transport_protos) {
+		if (strncmp(tmp, tpc.name, eix) == 0) {
+			tp = tpc.proto;
+			return true;
+		}
+	}
+
+	return false;
+}
+
+bool Parse_Port(const char* str, uint32_t& end, TIP_Address_Container& c) {
+	constexpr int TMPS = 6;
+	char tmp[TMPS];
+	int eix = 0;
+	end = 0;
+
+	for ( ; str[end] != '/' && str[end] != '\0'; end++) {
+		;
+	}
+
+	eix = static_cast<int>(end > TMPS) ? TMPS : end;
+	strncpy(tmp, str, eix);
+	tmp[eix - 1] = '\0';
+
+	if (str[end] == '\0')
+		end = 0;
+
+	c.port = static_cast<TNetwork_Port>(atoi(tmp));
+	return true;
+}
+
+bool Parse_Addr(const char* str, uint32_t& end, TIP_Address_Container& c, const NInternet_Protocol ip) {
+	constexpr int TMPS = 16;
+	char tmp[TMPS];
+	int eix = 0;
+	end = 0;
+
+	for ( ; str[end] != '/' && str[end] != '\0'; end++) {
+		;
+	}
+
+	eix = static_cast<int>(end > TMPS) ? TMPS : end;
+	strncpy(tmp, str, eix);
+	tmp[eix - 1] = '\0';
+
+	if (str[end] == '\0')
+		end = 0;
+
+	return Parse_Addr_String(tmp, ip, c);
+}
