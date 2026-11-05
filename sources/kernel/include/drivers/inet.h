@@ -20,7 +20,7 @@ void _rbo_buffer(uint8_t* data, const uint32_t size) {
         
         left++;
         right--;
-	}
+    }
 }
 
 inline uint32_t Get_IP_Address_Length(const NInternet_Protocol protocol) {
@@ -190,24 +190,24 @@ uint32_t Create_Headers(char* buff, const NInternet_Protocol ip, const NTranspor
 	uint32_t size = 0;
 
 	switch (ip) {
-		case NInternet_Protocol::V4:
+		case NInternet_Protocol::V4: {
 			size = sizeof(TIPv4_Header);
 			memset(buff, 0, size);
-			auto header = reinterpret_cast<TIPv4_Header*>(buff);
 			written += size;
 			break;
+		}
 		
 		default:
 			return 0;
 	}
 
 	switch (tp) {
-		case NTransport_Protocol::UDP:
+		case NTransport_Protocol::UDP: {
 			size = sizeof(TUDP_Header);
 			memset(&buff[written], 0, size);
-			auto header = reinterpret_cast<TUDP_Header*>(&buff[written]);
 			written += size;
 			break;
+		}
 		
 		default:
 			return 0;
@@ -222,7 +222,7 @@ bool Fill_Headers(char* buff, const NInternet_Protocol ip, const NTransport_Prot
 	uint32_t offset = 0;
 	
 	switch (ip) {
-		case NInternet_Protocol::V4:
+		case NInternet_Protocol::V4: {
 			offset = sizeof(TIPv4_Header);
 			auto header = reinterpret_cast<TIPv4_Header*>(buff);
 			header->DataProtocol = static_cast<uint8_t>(NInternet_Protocol::V4);
@@ -235,27 +235,29 @@ bool Fill_Headers(char* buff, const NInternet_Protocol ip, const NTransport_Prot
 			header->FragmentOffset = 0;
 			header->TTL = Default_TTL;
 			header->DataProtocol = static_cast<uint8_t>(tp);
-			header->SourceAddress = reinterpret_cast<TIPv4_Address>(source.raw_addr);
-			header->DestinationAddress = reinterpret_cast<TIPv4_Address>(destination.raw_addr);
+			auto src = reinterpret_cast<const TIPv4_Address*>(&source.raw_addr);
+			auto dst = reinterpret_cast<const TIPv4_Address*>(&destination.raw_addr);
+			header->SourceAddress = *src;
+			header->DestinationAddress = *dst;
 			break;
+		}
 		
 		default:
 			return false;
 	}
 
 	switch (tp) {
-		case NTransport_Protocol::UDP:
+		case NTransport_Protocol::UDP: {
 			auto header = reinterpret_cast<TUDP_Header*>(&buff[offset]);
 			header->SourcePort = source.port;
 			header->DestinationPort = destination.port;
 			header->Length = static_cast<uint16_t>(Get_THL(tp) + message_length);
-			break;
+			return true;
+		}
 		
 		default:
 			return false;
 	}
-
-	return true;
 }
 
 /* TODO - testing */
@@ -276,9 +278,10 @@ inline NInternet_Protocol Extrapolate_IP(const char* data) {
 /* TODO - same as above */
 NTransport_Protocol Extrapolate_TP(const char* data, const NInternet_Protocol ip) {
 	switch (ip) {
-		case NInternet_Protocol::V4:
+		case NInternet_Protocol::V4: {
 			auto header = reinterpret_cast<const TIPv4_Header*>(data);
 			return static_cast<NTransport_Protocol>(header->DataProtocol);
+		}
 		
 		default:
 			return NTransport_Protocol::UDP;
@@ -288,13 +291,14 @@ NTransport_Protocol Extrapolate_TP(const char* data, const NInternet_Protocol ip
 /* Parses data and returns IP header version with addresses */
 bool Extract_IP_Addresses(const char* data, TIP_Address_Container& source, TIP_Address_Container& destination, const NInternet_Protocol ip) {
 	switch (ip) {
-		case NInternet_Protocol::V4:
+		case NInternet_Protocol::V4: {
 			auto header = reinterpret_cast<const TIPv4_Header*>(data);
-			auto src = reinterpret_cast<TIPv4_Address>(source.raw_addr);
-			src = header->SourceAddress;
-			auto dst = reinterpret_cast<TIPv4_Address>(source.raw_addr);
-			dst = header->DestinationAddress;
+			auto src = reinterpret_cast<TIPv4_Address*>(&source.raw_addr);
+			*src = header->SourceAddress;
+			auto dst = reinterpret_cast<TIPv4_Address*>(&destination.raw_addr);
+			*dst = header->DestinationAddress;
 			return true;
+		}
 
 		default:
 			return false;
@@ -307,7 +311,7 @@ bool Calculate_Header_Checksums(char* buff, const NInternet_Protocol ip, const N
 	uint32_t offset = 0;
 	
 	switch (ip) {
-		case NInternet_Protocol::V4:
+		case NInternet_Protocol::V4: {
 			auto size = Get_IHL(ip);
 			offset = size;
 			auto header = reinterpret_cast<TIPv4_Header*>(buff);
@@ -320,13 +324,14 @@ bool Calculate_Header_Checksums(char* buff, const NInternet_Protocol ip, const N
 
 			header->Checksum = ~(sum & 0xFFFF);
 			break;
+		}
 		
 		default:
 			return false;
 	}
 
 	switch (tp) {
-		case NTransport_Protocol::UDP:
+		case NTransport_Protocol::UDP: {
 			auto tp_header = reinterpret_cast<TUDP_Header*>(&buff[offset]);
 			uint16_t sum = 0;
 			uint16_t tmp[1] = { 0 }; /* 8b zeroes, 8b protocol, 16b datagram length */
@@ -350,13 +355,12 @@ bool Calculate_Header_Checksums(char* buff, const NInternet_Protocol ip, const N
 			if (tp_header->Checksum == 0)
 				tp_header->Checksum = 0xFFFF;
 
-			break;
+			return true;
+		}
 		
 		default:
 			return false;
 	}
-
-	return true;
 }
 
 /* TODO - testing */
@@ -384,7 +388,7 @@ bool Verify_Header_Checksums(const char* data) {
 	Extract_IP_Addresses(data, src, dst, ip);
 	
 	switch (ip) {
-		case NInternet_Protocol::V4:
+		case NInternet_Protocol::V4: {
 			auto size = Get_IHL(ip);
 			offset = size;
 			auto header = reinterpret_cast<const TIPv4_Header*>(data);
@@ -398,14 +402,15 @@ bool Verify_Header_Checksums(const char* data) {
 			if (sum != 0)
 				return false;
 
-			break;
+			break; /* IP header sum is ok, continue to TP header */
+		}
 		
 		default:
 			return false;
 	}
 
 	switch (tp) {
-		case NTransport_Protocol::UDP:
+		case NTransport_Protocol::UDP: {
 			auto header = reinterpret_cast<const TUDP_Header*>(&data[offset]);
 			uint16_t sum = 0;
 			uint16_t tmp[1] = { 0 }; /* 8b zeroes, 8b protocol, 16b datagram length */
@@ -427,10 +432,9 @@ bool Verify_Header_Checksums(const char* data) {
 
 			// Calculated sum should be 0
 			return sum == 0;
+		}
 		
 		default:
 			return false;
 	}
-
-	return true;
 }
