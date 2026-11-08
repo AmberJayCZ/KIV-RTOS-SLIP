@@ -43,6 +43,20 @@ inline uint32_t Get_IHL(const NInternet_Protocol protocol) {
 	}
 }
 
+inline uint32_t Get_IHL(const char* header) {
+	const NInternet_Protocol protocol = Extrapolate_IP(header);
+	
+	switch (protocol) {
+		case NInternet_Protocol::V4: {
+			auto h = reinterpret_cast<const TIPv4_Header*>(header);
+			return h->IHL * 4;
+		}
+		
+		default:
+			return 0;
+	}
+}
+
 inline uint32_t Get_THL(const NTransport_Protocol protocol) {
 	switch (protocol) {
 		case NTransport_Protocol::UDP:
@@ -138,7 +152,7 @@ TIP_Address<NInternet_Protocol::V4> Address_To_Number<NInternet_Protocol::V4>(co
     octets[octet_index] = static_cast<unsigned char>(current_val);
 	auto ap = reinterpret_cast<unsigned char*>(&a);
 
-	for (auto i = 0; i < 3; i++) {
+	for (auto i = 0; i <= 3; i++) {
 		ap[i] = octets[i];
 	}
 
@@ -225,16 +239,17 @@ bool Fill_Headers(char* buff, const NInternet_Protocol ip, const NTransport_Prot
 		case NInternet_Protocol::V4: {
 			offset = sizeof(TIPv4_Header);
 			auto header = reinterpret_cast<TIPv4_Header*>(buff);
-			header->DataProtocol = static_cast<uint8_t>(NInternet_Protocol::V4);
-			header->IHL = 5; /* Fixed to 5B as options are not supported ATP */
-			// header->DSCP = static_cast<uint8_t>(NIP_DSCP::DF);	/* Commented because we use 0 values either way ATP */
-			// header->ECN = static_cast<uint8_t>(NIP_ECN::NotECT);
-			header->Length = static_cast<uint16_t>(Get_IHL(ip) + Get_THL(tp) + message_length);
+			header->IPVersion = static_cast<uint8_t>(NInternet_Protocol::V4);
+			header->IHL = 5; /* Fixed to 5*4 B as options are not supported ATP */
+			header->DSCP = static_cast<uint8_t>(NIP_DSCP::DF);
+			header->ECN = static_cast<uint8_t>(NIP_ECN::NotECT);
+			header->Length = Host_To_Network(static_cast<uint16_t>(Get_IHL(ip) + Get_THL(tp) + message_length));
 			header->FragmentID = 0; /* No fragmentation support */
-			header->Flags = static_cast<uint8_t>(NIP_Flags::DontFragment); /* Fragmentation explicitly disabled */
+			header->Flags = 0;
 			header->FragmentOffset = 0;
 			header->TTL = Default_TTL;
 			header->DataProtocol = static_cast<uint8_t>(tp);
+			header->Checksum = 0;
 			auto src = reinterpret_cast<const TIPv4_Address*>(&source.raw_addr);
 			auto dst = reinterpret_cast<const TIPv4_Address*>(&destination.raw_addr);
 			header->SourceAddress = *src;
@@ -251,7 +266,8 @@ bool Fill_Headers(char* buff, const NInternet_Protocol ip, const NTransport_Prot
 			auto header = reinterpret_cast<TUDP_Header*>(&buff[offset]);
 			header->SourcePort = source.port;
 			header->DestinationPort = destination.port;
-			header->Length = static_cast<uint16_t>(Get_THL(tp) + message_length);
+			header->Length = Host_To_Network(static_cast<uint16_t>(Get_THL(tp) + message_length));
+			header->Checksum = 0;
 			return true;
 		}
 		
@@ -334,11 +350,10 @@ bool Calculate_Header_Checksums(char* buff, const NInternet_Protocol ip, const N
 		case NTransport_Protocol::UDP: {
 			auto tp_header = reinterpret_cast<TUDP_Header*>(&buff[offset]);
 			uint16_t sum = 0;
-			uint16_t tmp[1] = { 0 }; /* 8b zeroes, 8b protocol, 16b datagram length */
-			// reinterpret_cast<uint8_t*>(tmp)[0] = 0;
-			reinterpret_cast<uint8_t*>(tmp)[1] = static_cast<uint8_t>(tp);
-			sum = Calculate_1s_Complement_Sum(sum, tmp[0]);
-			sum = Calculate_1s_Complement_Sum(sum, static_cast<uint16_t>(Get_THL(tp) + message_length));
+			uint8_t tmp[2] = { 0, 0 }; /* 8b zeroes, 8b protocol, 16b datagram length */
+			tmp[1] = static_cast<uint8_t>(tp);
+			sum = Calculate_1s_Complement_Sum(sum, *reinterpret_cast<uint16_t*>(tmp));
+			sum = Calculate_1s_Complement_Sum(sum, Host_To_Network(static_cast<uint16_t>(Get_THL(tp) + message_length)));
 			const auto addr_len_16 = Get_IP_Address_Length(ip) / 2;
 
 			auto a = reinterpret_cast<const uint16_t*>(source.raw_addr);
@@ -399,7 +414,7 @@ bool Verify_Header_Checksums(const char* data) {
 				sum = Calculate_1s_Complement_Sum(sum, header_arr[i]);
 			}
 
-			if (sum != 0)
+			if (sum != 0xFFFF) /* Sum should be all 1s */
 				return false;
 
 			break; /* IP header sum is ok, continue to TP header */
@@ -413,10 +428,9 @@ bool Verify_Header_Checksums(const char* data) {
 		case NTransport_Protocol::UDP: {
 			auto header = reinterpret_cast<const TUDP_Header*>(&data[offset]);
 			uint16_t sum = 0;
-			uint16_t tmp[1] = { 0 }; /* 8b zeroes, 8b protocol, 16b datagram length */
-			// reinterpret_cast<uint8_t*>(tmp)[0] = 0;
-			reinterpret_cast<uint8_t*>(tmp)[1] = static_cast<uint8_t>(tp);
-			sum = Calculate_1s_Complement_Sum(sum, tmp[0]);
+			uint8_t tmp[2] = { 0, 0 }; /* 8b zeroes, 8b protocol, 16b datagram length */
+			tmp[1] = static_cast<uint8_t>(tp);
+			sum = Calculate_1s_Complement_Sum(sum, *reinterpret_cast<uint16_t*>(tmp));
 			sum = Calculate_1s_Complement_Sum(sum, header->Length);
 			const auto addr_len_16 = Get_IP_Address_Length(ip) / 2;
 
@@ -430,8 +444,8 @@ bool Verify_Header_Checksums(const char* data) {
 
 			sum = Calculate_1s_Complement_Sum(sum, header->Checksum);
 
-			// Calculated sum should be 0
-			return sum == 0;
+			// Calculated sum should be all 1s
+			return sum == 0xFFFF;
 		}
 		
 		default:
