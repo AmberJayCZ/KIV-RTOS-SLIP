@@ -77,27 +77,26 @@ struct TIP_Header;
 
 /* IP header pretext */
 struct TIP_Header_Pretext {
-	uint8_t IPVersion : 4;
 	uint8_t IHL : 4;
+	uint8_t IPVersion : 4;
 };
 
 /* IPv4 header */
 template <>
 struct TIP_Header<NInternet_Protocol::V4> {
+	uint8_t IHL : 4;					/* IP header length in 4B words (so if total length is 20B then IHL value is 5), values between 5 and 15 */
 	uint8_t IPVersion : 4;				/* IP version (4b - NInternet_Protocol) */
-	uint8_t IHL : 4;					/* IP header length in bytes (4b)  */
-	uint8_t DSCP : 6;					/* DSCP mode (6b - NIP_DSCP) */
 	uint8_t ECN : 2;					/* ECN flags (2b - NIP_ECN) */
+	uint8_t DSCP : 6;					/* DSCP mode (6b - NIP_DSCP) */
 	uint16_t Length;					/* Header + data length in bytes (16b) */
 	uint16_t FragmentID;				/* Packet fragment group identification (16b) */
-	uint16_t Flags : 3;					/* Special IP flags (3b - NIP_Flags) */
 	uint16_t FragmentOffset : 13;		/* Position of fragment within packet measured in 8-byte units (16b) */
+	uint16_t Flags : 3;					/* Special IP flags (3b - NIP_Flags) */
 	uint8_t TTL;						/* Time-to-live counter (8b) */
 	uint8_t DataProtocol;				/* Protocol for encapsulated data (8b - NTransport_Protocol) */
 	uint16_t Checksum;					/* Header checksum (16b) */
 	uint32_t SourceAddress;				/* Source IPv4 address (32b - TIPv4_Address) */
 	uint32_t DestinationAddress;		/* Destination IPv4 address (32b - TIPv4_Address) */
-	/* Options prozatim nepodporovane, mozna pozdeji */
 };
 
 #pragma pack(pop)
