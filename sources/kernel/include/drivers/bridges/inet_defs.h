@@ -59,10 +59,10 @@ struct TIP_Address_Type<NInternet_Protocol::V4> {
 using TIPv4_Address = TIP_Address<NInternet_Protocol::V4>;
 
 /* Broadcast IPv4 address constant - use for broadcast or recieving from unknown address */
-constexpr TIPv4_Address IPv4_Address_Any = 0xFFFFFFFF;
+constexpr TIPv4_Address IPv4_Address_Any = 0x00000000;
 
 /* Invalid IPv4 address constant - recieving from this address will drop packet */
-constexpr TIPv4_Address IPv4_Address_None = 0x00000000;
+constexpr TIPv4_Address IPv4_Address_None = 0xFFFFFFFF;
 
 
 
@@ -124,8 +124,10 @@ struct TTP_Header<NTransport_Protocol::UDP> {
 /* UDP header type alias */
 using TUDP_Header = TTP_Header<NTransport_Protocol::UDP>;
 
-/* Struct for typecasting IP addresses - TODO test usage */
+/* Struct for typecasting IP addresses */
 struct TIP_Address_Container {
-	TNetwork_Port port; /* Target port (network format) */
-	uint8_t raw_addr[MAX_ADDR_LEN]; /* Raw address in bytes (network format) - use reinterpret_cast to concrete TIP_Address */
+	TNetwork_Port port{};				// Target port (network format)
+	NInternet_Protocol _ip{};			// Version of IP address in byte field
+	bool _nbo{};						// Address is in NBO (Network Byte Order) if set, otherwise it is in HBO
+	uint8_t raw_addr[MAX_ADDR_LEN]{};	// Raw address in bytes (network format) - use reinterpret_cast with ip field to concrete IP address type
 };
