@@ -8,6 +8,10 @@
 
 constexpr int CUART_BUF_SIZE = 8192;
 
+// TODO: TEMPORARY FOR TESTING WITH EMULATOR - SET FALSE WHEN USING WITH REAL HW
+// Outputs chars on UART in hexadecimal format separated by spaces
+constexpr bool UART_HEX_MODE = false;
+
 class CUART {
     private:
         // odkaz na AUX driver

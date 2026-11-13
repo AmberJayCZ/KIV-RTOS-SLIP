@@ -5,6 +5,7 @@
 #include <memory/kernel_heap.h>
 #include <fs/filesystem.h>
 #include <stdstring.h>
+#include <process/process_manager.h>
 
 // virtualni UART soubor
 class CUART_File final : public IFile {
@@ -44,10 +45,29 @@ class CUART_File final : public IFile {
             return false;
         }
 
+        // TODO: TEMPORARY CHANGES
         virtual uint32_t Write(const char* buffer, uint32_t num) override {
             if (num > 0 && buffer != nullptr) {
                 if (mChannel == 0) {
-                    sUART0.Write(buffer, num);
+                    if (!UART_HEX_MODE) {
+                        sUART0.Write(buffer, num);
+                    }
+                    
+                    else {
+                        for (uint32_t i = 0; i < num; i++) {
+                            char tmp[3] = { 0, 0, ' ' };
+                            auto mapping = [](uint8_t val) -> char {
+                                if (val >= 0 && val <= 9) { return '0' + val; }
+                                else { return 'A' + (val - 10); }
+                            };
+
+                            uint8_t val = static_cast<uint8_t>(buffer[i]);
+                            tmp[0] = mapping(val / 16);
+                            tmp[1] = mapping(val % 16);
+                            sUART0.Write(tmp, 3);
+                        }
+                    }
+
                     return num;
                 }
             }
@@ -117,4 +137,4 @@ class CUART_FS_Driver : public IFilesystem_Driver {
         }
 };
 
-CUART_FS_Driver fsUART_FS_Driver;
+extern CUART_FS_Driver fsUART_FS_Driver;
